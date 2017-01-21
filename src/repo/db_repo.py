@@ -41,11 +41,16 @@ class DbRepository():
 		return [i for i in self.Flights if i.id == id][0]
 
 	def addFlight(self, Company, Destination, price):
-		flight = Flight(Company, Destination, price)
+		flight = Flight(0, Company, Destination, price)
 		self.Flights.append(flight)
-		stmt = Statement("INSERT INTO Flights VALUES (DEFAULT, ?, ?, ?)",
+		stmt = Statement("INSERT INTO Flights VALUES ($next_id, ?, ?, ?)",
 		                 (flight.company.id, flight.destination.id, flight.price))
 		self.executeIntoDb(stmt)
+		self.reloadFlights()
+
+	def reloadFlights(self):
+		conn = self.getConn()
+		self.loadFlights(conn, True)
 
 	def executeIntoDb(self, stmt):
 		conn = self.getConn()
@@ -81,7 +86,7 @@ class DbRepository():
 			self.Flights.remove(i)
 		stmt = Statement('DELETE FROM Flights WHERE id in (' + ','.join(['?' for i in flights]) + ')', tuple(flights))
 		self.executeIntoDb(stmt)
-
+		self.reloadFlights()
 
 	def loadFlights(self, conn, close=False):
 		curr = conn.cursor()
