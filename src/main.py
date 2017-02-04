@@ -1,8 +1,6 @@
-from src.repo.db_repo import DbRepository
+from src.ctrl.MainController import MainController
 
-try:
-	repo = DbRepository()
-	print(repo.Destinations)
 
-except Exception as ex:
-	print(ex)
+if __name__ == '__main__':
+	main_controller = MainController()
+	main_controller.main()

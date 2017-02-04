@@ -17,7 +17,7 @@ class AirportController():
 
 
 	def search_flight(self):
-		result = self.view.search_flight()
+		result = next(iter(self.view.search_flight() or []), None)
 
 		if Validator.not_none(result):
 			flights = self.db.find_flight(result)
@@ -36,13 +36,40 @@ class AirportController():
 		self.view.display_list(result, 'The companies are: ')
 
 
-	def _add_flight(self, results):
-		company = self.db.get_company_by_name(results[1:])
-		price = results[1:]
-		destination = self.db.get_destination_by_name(results[1:])
+	def remove_all_flights_to_destination(self):
+		result = self.view.remove_destination()
 
-		if Validator.not_none(company, True) and Validator.not_none(destination, True):
-			self.db.add_flight(company, destination, price)
+		if Validator.not_none(result):
+			self.db.remove_flights_by_destination_name(result)
+
+		self.display_flights()
+
+
+	def low_cost_for_destination(self):
+		self.view.low_cost_flights_per_destinations()
+
+		result = self.db.low_cost_flight()
+
+		self.view.display_list(result, 'The low cost flights: ')
+
+
+	def display_destinations(self):
+		self.view.display_list(self.db.Destinations, 'Destinations: ')
+
+
+	def display_airplane_companies(self):
+		self.view.display_list(self.db.Companies, 'Airplane Companies: ')
+
+
+	def display_flights(self):
+		self.view.display_list(self.db.Flights, 'Flights: ')
+
+
+	def _add_flight(self, results):
+		company = results.pop(0)
+		price = results.pop(0)
+		destination = results.pop(0)
+		self.db.add_flight(company, destination, price)
 
 
 

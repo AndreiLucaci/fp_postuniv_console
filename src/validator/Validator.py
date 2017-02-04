@@ -12,7 +12,9 @@ class Validator():
 
 	@staticmethod
 	def validate_string(value):
-		return False, 'String is empty or None' if value == '' or value == None else True, value
+		answer = value != '' and Validator.not_none(value)
+		val = value if answer else 'String is empty or None'
+		return answer, val
 
 
 	@staticmethod
@@ -22,3 +24,8 @@ class Validator():
 			print('Invalid value provided. It is none')
 
 		return result
+
+
+	@staticmethod
+	def is_none(value):
+		return value is None

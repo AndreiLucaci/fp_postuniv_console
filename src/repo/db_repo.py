@@ -4,6 +4,7 @@ from operator import attrgetter
 from src.models.AirplaneCompany import AirplaneCompany
 from src.models.Flight import Flight
 from src.models.Destination import Destination
+from src.validator.Validator import Validator
 from .Statement import Statement
 
 
@@ -41,21 +42,35 @@ class DbRepository():
 		return self.get_first([i for i in self.Flights if i.id == id] or [])
 
 	def get_company_by_name(self, name):
-		return self.get_first([i for i in self.Companies if i.name == name])
+		return self.get_first([i for i in self.Companies if i.name.lower() == name.lower()])
 
 	def get_destination_by_name(self, name):
-		return self.get_first([i for i in self.Destinations if i.name == name])
+		return self.get_first([i for i in self.Destinations if i.name.lower() == name.lower()])
 
 	def get_first(self, lst):
 		return next(iter(lst or []), None)
 
-	def add_flight(self, Company, Destination, price):
+	def _add_flight(self, Company, Destination, price):
 		flight = Flight(0, Company, Destination, price)
 		self.Flights.append(flight)
-		stmt = Statement("INSERT INTO Flights VALUES ($next_id, ?, ?, ?)",
+		stmt = Statement("INSERT INTO Flights(company, destination, price) VALUES (?, ?, ?)",
 		                 (flight.company.id, flight.destination.id, flight.price))
 		self.execute_into_db(stmt)
 		self.reload_flights()
+
+	def add_flight(self, company_name, destination_name, price):
+		company = self.get_company_by_name(company_name)
+		destination = self.get_destination_by_name(destination_name)
+		if Validator.is_none(destination):
+			self.add_new_destination(destination_name)
+			destination = self.get_destination_by_name(destination_name)
+
+		self._add_flight(company, destination, price)
+
+	def add_new_destination(self, destination_name):
+		stmt = Statement('INSERT INTO Destinations(name) VALUES (?)', (destination_name,))
+		self.execute_into_db(stmt)
+		self.load_destinations(self.get_conn(), True)
 
 	def reload_flights(self):
 		conn = self.get_conn()
@@ -64,14 +79,18 @@ class DbRepository():
 	def execute_into_db(self, stmt):
 		conn = self.get_conn()
 		curr = conn.cursor()
-		curr.execute(stmt.query, stmt.params)
+		try:
+			curr.execute(stmt.query, stmt.params)
+		except sqlite3.Error as ex:
+			print (ex)
+		conn.commit()
 		conn.close()
 
 	def find_flight(self, price):
 		return [i for i in self.Flights if i.price <= price]
 
 	def sort_flights(self):
-		return self.Flights[:].sort(lambda x: x.price)
+		return sorted(self.Flights, key=lambda x: x.price)
 
 	def average_company(self):
 		companies = {}
@@ -89,8 +108,15 @@ class DbRepository():
 			destinations[i.destination].append(i)
 		return [min(destinations[i], key=attrgetter('price')) for i in destinations]
 
-	def remove_flights(self, destinationId):
-		flights = [i for i in self.Flights if i.destination.id == destinationId]
+	def remove_flights_by_destination_id(self, destination_id):
+		flights = [i for i in self.Flights if i.destination.id == destination_id]
+		self._remove_flights(flights)
+
+	def remove_flights_by_destination_name(self, destination_name):
+		flights = [i for i in self.Flights if i.destination.name == destination_name]
+		self._remove_flights(flights)
+
+	def _remove_flights(self, flights):
 		for i in flights:
 			self.Flights.remove(i)
 		stmt = Statement('DELETE FROM Flights WHERE id in (' + ','.join(['?' for i in flights]) + ')', tuple(flights))
