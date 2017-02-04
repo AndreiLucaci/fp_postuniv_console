@@ -15,3 +15,8 @@ class AirplaneCompany():
 
 	def __hash__(self):
 		return hash(tuple(sorted(self.__dict__.items())))
+
+
+	def __str__(self):
+		return f'''---=== Company ===---
+Name = {self.name}'''

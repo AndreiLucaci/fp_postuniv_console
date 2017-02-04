@@ -18,3 +18,14 @@ class Flight():
 	def __hash__(self):
 		return hash(tuple(sorted(self.__dict__.items())))
 
+	def __str__(self):
+		''' This works only with Python 3.6'''
+
+		return f'''---=== Flight ===---
+Id = {self.id}
+Price = {self.price}
+	{self.company}
+	{self.destination}
+'''
+
+
